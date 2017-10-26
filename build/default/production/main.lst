@@ -1,0 +1,433 @@
+MPASM 5.75                          MAIN.ASM   10-25-2017  23:28:48         PAGE  1
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+Warning[205]: Found directive in column 1. (list)
+                      00001 list p=12f675
+Warning[205]: Found directive in column 1. (include)
+                      00002 include <p12f675.inc>
+                      00001         LIST
+                      00002 
+                      00003 ;==========================================================================
+                      00004 ; Build date : Jul 02 2017
+                      00005 ;  MPASM PIC12F675 processor include
+                      00006 ; 
+                      00007 ;  (c) Copyright 1999-2017 Microchip Technology, All rights reserved
+                      00008 ;==========================================================================
+                      00009 
+                      00367         LIST
+Warning[205]: Found directive in column 1. (errorlevel)
+                      00003 errorlevel -302
+                      00004    
+Warning[205]: Found directive in column 1. (__CONFIG)
+2007   3F44           00005 __CONFIG   _CP_ON & _CPD_OFF & _BODEN_ON & _MCLRE_OFF & _WDT_OFF & _PWRTE_ON & _INTRC_OSC_NOCLKOUT
+                      00006     
+                      00007 ; Definicion de Pines del PIC12F675
+                      00008 ; 1. Vcc=5Vdc, salida de la fuente AC
+                      00009 ; 2. GP5, 
+                      00010 ; 3. GP4, salida digital GP4salidaPIN3   
+                      00011 ; * GP1 -> salida al LED de resultado.
+                      00012 ; * GP2 -> salida al LED de modo de entrada. LOW=operando 1 HIGH=operando2
+                      00013 ; * GP0 -> entrada de operando / reset
+                      00014 ; * GP3 -> entrada de control de operando. LOW= ingresar operando1, HIGH= ingresar operando2
+                      00015 ; 8. VSS=GND
+                      00016     
+                      00017 ;***DEFINICION VARIABLES
+  00000003            00018 BOTON_ENTRADA           EQU         3           ;bit de selección de GP3 
+  00000005            00019 BOTON_CONTROL           EQU         5           ;bit de selección de GP5
+  00000021            00020 FLAG_FLANCO             EQU         0x21        ;registro para detectar flanco de subida del pulso del b
+                            otón
+  00000022            00021 REGISTRO_CONTADOR_1     EQU         0x22        ;registro para el primer byte (menos significativo) del 
+                            contador
+  00000023            00022 REGISTRO_CONTADOR_2     EQU         0x23        ;registro para el segundo byte del contador
+  00000024            00023 REGISTRO_CONTADOR_3     EQU         0x24        ;registro para el tercer byte del contador
+  00000025            00024 REGISTRO_CONTADOR_4     EQU         0x25        ;registro para el cuarto byte (más significativo) del co
+                            ntador
+  00000026            00025 OPERANDO1               EQU         0x26        ;registro para el operando1
+  00000027            00026 OPERANDO2               EQU         0x27        ;registro para el operando2
+Warning[205]: Found directive in column 1. (ORG)
+                      00027 ORG     0x000           ; vector de reset
+0000   3000           00028     movlw   0           ; carga W con 0
+0001   008B           00029     movwf   INTCON      ; Asegura que no hay interrupciones aun
+0002   2???           00030     goto    INICIO      ; salte al inicio del programa
+Warning[205]: Found directive in column 1. (ORG)
+                      00031 ORG     0x004               ; vector de interrupcion (INTF)
+                      00032    
+0004                  00033 INICIO
+Warning[203]: Found opcode in column 1. (CALL)
+MPASM 5.75                          MAIN.ASM   10-25-2017  23:28:48         PAGE  2
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0004   2???           00034 CALL fConfiguracion
+Warning[203]: Found opcode in column 1. (CLRWDT)
+0005   0064           00035 CLRWDT
+Warning[203]: Found opcode in column 1. (CALL)
+0006   2???           00036 CALL fLeerDatos
+Warning[203]: Found opcode in column 1. (GOTO)
+0007   2???           00037 GOTO INICIO
+                      00038     
+0008                  00039 fConfiguracion
+                      00040 ;   TRISIO = 0b111100;
+0008   303C           00041     MOVLW 0x3C
+0009   1683           00042     BSF STATUS,RP0  ; banco 1
+000A   0085           00043     MOVWF TRISIO
+000B   0008           00044     RETURN
+000C                  00045 fLeerDatos
+                      00046     ;    DATO_TEMPORAL = 0;
+000C   1283           00047     BCF STATUS,RP0 ; banco 0
+                      00048     ;    if (BOTON_ENTRADA == 1) {
+000D   1D85           00049     BTFSS GPIO,BOTON_ENTRADA
+000E   2???           00050     GOTO lLeerDatosBotonEntradaNoPresionado
+                      00051     ;        if (FLAG_FLANCO == 0) {
+000F   1821           00052     BTFSC FLAG_FLANCO,0
+0010   2???           00053     GOTO lLeerDatosReturn
+                      00054     ;            long REGISTRO_CONTADOR_1 = 200000 -> 0x 00 03 0D 40;
+0011   3000           00055     MOVLW 0x0
+0012   00A5           00056     MOVWF REGISTRO_CONTADOR_4
+0013   3003           00057     MOVLW 0x3
+0014   00A4           00058     MOVWF REGISTRO_CONTADOR_3
+0015   300D           00059     MOVLW 0xD
+0016   00A3           00060     MOVWF REGISTRO_CONTADOR_2
+0017   3040           00061     MOVLW 0x40
+0018   00A2           00062     MOVWF REGISTRO_CONTADOR_1
+                      00063     ;            while (REGISTRO_CONTADOR_1 > 0) {                
+Warning[207]: Found label after column 1. (lLeerDatosWhile)
+0019   1283           00064     lLeerDatosWhile BCF STATUS,RP0          ;banco 0
+001A   1BA5           00065     BTFSC REGISTRO_CONTADOR_4,7
+001B   2???           00066     GOTO lLeerDatosReturn   ; si el contador es negativo
+001C   0825           00067     MOVF REGISTRO_CONTADOR_4,W
+001D   1D03           00068     BTFSS STATUS,0x2    ; esto almacena 1 si el resultado de una operación es 0
+001E   2???           00069     GOTO lLeerDatoDecrementarContador
+001F   0824           00070     MOVF REGISTRO_CONTADOR_3,W
+0020   1D03           00071     BTFSS STATUS,0x2
+0021   2???           00072     GOTO lLeerDatoDecrementarContador
+0022   0823           00073     MOVF REGISTRO_CONTADOR_2, W
+0023   1D03           00074     BTFSS STATUS,0x2
+0024   2???           00075     GOTO lLeerDatoDecrementarContador
+0025   3001           00076     MOVLW 1
+0026   0222           00077     SUBWF REGISTRO_CONTADOR_1,W ;le resta 1 a el byte menos significativo y guarda el resultado en el mi
+                            smo byte
+0027   1D03           00078     BTFSS STATUS,0x2
+0028   1803           00079     BTFSC STATUS,0x0 ; esto es 0 si no hay carry
+0029   2???           00080     GOTO lLeerDatoDecrementarContador
+002A   2???           00081     GOTO lLeerDatosReturn
+MPASM 5.75                          MAIN.ASM   10-25-2017  23:28:48         PAGE  3
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00082     ;                REGISTRO_CONTADOR_1--;
+Warning[207]: Found label after column 1. (lLeerDatoDecrementarContador)
+002B   30FF           00083     lLeerDatoDecrementarContador MOVLW 0xFF
+002C   07A2           00084     ADDWF REGISTRO_CONTADOR_1,1
+002D   30FF           00085     MOVLW 0xFF
+002E   1C03           00086     BTFSS STATUS,0
+002F   07A3           00087     ADDWF REGISTRO_CONTADOR_2,1
+0030   30FF           00088     MOVLW 0xFF
+0031   1C03           00089     BTFSS STATUS,0
+0032   07A4           00090     ADDWF REGISTRO_CONTADOR_3,1
+0033   30FF           00091     MOVLW 0xFF
+0034   1C03           00092     BTFSS STATUS,0
+0035   07A5           00093     ADDWF REGISTRO_CONTADOR_4,1
+                      00094     ;                CLRWDT();
+0036   0064           00095     CLRWDT
+                      00096     ;                if (BOTON_ENTRADA == 0) {
+0037   1283           00097     BCF STATUS,RP0
+0038   1985           00098     BTFSC GPIO, 0x3
+0039   2???           00099     GOTO lLeerDatosChequearContadorTerminado
+                      00100     ;                    FLAG_FLANCO = 1;
+003A   1421           00101     BSF FLAG_FLANCO,0
+                      00102     ;                    if (BOTON_CONTROL == 0) { // ingresando operando1
+003B   1A85           00103     BTFSC GPIO,BOTON_CONTROL
+003C   2???           00104     GOTO lLeerDatosIngresandoOperando2
+                      00105     ;                        operando1 += DATO_TEMPORAL;
+003D   3001           00106     MOVLW 1
+003E   07A6           00107     ADDWF OPERANDO1,1
+                      00108     ;                    } else { // ingresando operando2
+003F   2???           00109     GOTO lLeerDatosReturn
+                      00110     ;                        operando2 += DATO_TEMPORAL;
+Warning[207]: Found label after column 1. (lLeerDatosIngresandoOperando2)
+0040   3001           00111     lLeerDatosIngresandoOperando2 MOVLW 1
+0041   07A7           00112     ADDWF OPERANDO2,1
+0042   2???           00113     GOTO lLeerDatosReturn
+                      00114     ;                } else if (REGISTRO_CONTADOR_1 == 0) {
+Warning[207]: Found label after column 1. (lLeerDatosChequearContadorTerminado)
+Warning[208]: Label truncated at 32 characters. (lLeerDatosChequearContadorTerminado)
+0043   0825           00115     lLeerDatosChequearContadorTerminado MOVF REGISTRO_CONTADOR_4,W
+0044   0424           00116     IORWF REGISTRO_CONTADOR_3,W
+0045   0423           00117     IORWF REGISTRO_CONTADOR_2,W
+0046   0422           00118     IORWF REGISTRO_CONTADOR_1,W
+0047   1D03           00119     BTFSS STATUS,2
+0048   2???           00120     GOTO lLeerDatosWhile
+                      00121     ;                    mostrarResultado();
+0049   2???           00122     CALL fMostrarResultado
+004A   2???           00123     GOTO lLeerDatosReturn
+                      00124     ;        FLAG_FLANCO = 0;
+Warning[207]: Found label after column 1. (lLeerDatosBotonEntradaNoPresionado)
+Warning[208]: Label truncated at 32 characters. (lLeerDatosBotonEntradaNoPresionado)
+004B   01A1           00125     lLeerDatosBotonEntradaNoPresionado CLRF FLAG_FLANCO
+004C   2???           00126     GOTO lLeerDatosReturn
+Warning[207]: Found label after column 1. (lLeerDatosReturn)
+004D   0008           00127     lLeerDatosReturn RETURN
+MPASM 5.75                          MAIN.ASM   10-25-2017  23:28:48         PAGE  4
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+004E                  00128 fMostrarResultado
+Warning[205]: Found directive in column 1. (END)
+3F44                  00129 END
+MPASM 5.75                          MAIN.ASM   10-25-2017  23:28:48         PAGE  5
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+ADCON0                            0000001F
+ADCS0                             00000004
+ADCS1                             00000005
+ADCS2                             00000006
+ADFM                              00000007
+ADIE                              00000006
+ADIF                              00000006
+ADON                              00000000
+ADRESH                            0000001E
+ADRESL                            0000009E
+ANS0                              00000000
+ANS1                              00000001
+ANS2                              00000002
+ANS3                              00000003
+ANSEL                             0000009F
+BOTON_CONTROL                     00000005
+BOTON_ENTRADA                     00000003
+C                                 00000000
+CAL0                              00000002
+CAL1                              00000003
+CAL2                              00000004
+CAL3                              00000005
+CAL4                              00000006
+CAL5                              00000007
+CHS0                              00000002
+CHS1                              00000003
+CINV                              00000004
+CIS                               00000003
+CM0                               00000000
+CM1                               00000001
+CM2                               00000002
+CMCON                             00000019
+CMIE                              00000003
+CMIF                              00000003
+COUT                              00000006
+DC                                00000001
+EEADR                             0000009B
+EECON1                            0000009C
+EECON2                            0000009D
+EEDAT                             0000009A
+EEDATA                            0000009A
+EEIE                              00000007
+EEIF                              00000007
+F                                 00000001
+FLAG_FLANCO                       00000021
+FSR                               00000004
+GIE                               00000007
+GO                                00000001
+GO_DONE                           00000001
+GO_NOT_DONE                       00000001
+GP0                               00000000
+GP1                               00000001
+GP2                               00000002
+MPASM 5.75                          MAIN.ASM   10-25-2017  23:28:48         PAGE  6
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+GP3                               00000003
+GP4                               00000004
+GP5                               00000005
+GPIE                              00000003
+GPIF                              00000000
+GPIO                              00000005
+GPIO0                             00000000
+GPIO1                             00000001
+GPIO2                             00000002
+GPIO3                             00000003
+GPIO4                             00000004
+GPIO5                             00000005
+INDF                              00000000
+INICIO                            00000004
+INTCON                            0000000B
+INTE                              00000004
+INTEDG                            00000006
+INTF                              00000001
+IOC                               00000096
+IOC0                              00000000
+IOC1                              00000001
+IOC2                              00000002
+IOC3                              00000003
+IOC4                              00000004
+IOC5                              00000005
+IOCB                              00000096
+IOCB0                             00000000
+IOCB1                             00000001
+IOCB2                             00000002
+IOCB3                             00000003
+IOCB4                             00000004
+IOCB5                             00000005
+IRP                               00000007
+NOT_BOD                           00000000
+NOT_BOR                           00000000
+NOT_DONE                          00000001
+NOT_GPPU                          00000007
+NOT_PD                            00000003
+NOT_POR                           00000001
+NOT_T1SYNC                        00000002
+NOT_TO                            00000004
+OPERANDO1                         00000026
+OPERANDO2                         00000027
+OPTION_REG                        00000081
+OSCCAL                            00000090
+PCL                               00000002
+PCLATH                            0000000A
+PCON                              0000008E
+PEIE                              00000006
+PIE1                              0000008C
+PIR1                              0000000C
+PS0                               00000000
+PS1                               00000001
+MPASM 5.75                          MAIN.ASM   10-25-2017  23:28:48         PAGE  7
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+PS2                               00000002
+PSA                               00000003
+RD                                00000000
+REGISTRO_CONTADOR_1               00000022
+REGISTRO_CONTADOR_2               00000023
+REGISTRO_CONTADOR_3               00000024
+REGISTRO_CONTADOR_4               00000025
+RP0                               00000005
+RP1                               00000006
+STATUS                            00000003
+T0CS                              00000005
+T0IE                              00000005
+T0IF                              00000002
+T0SE                              00000004
+T1CKPS0                           00000004
+T1CKPS1                           00000005
+T1CON                             00000010
+T1IE                              00000000
+T1IF                              00000000
+T1OSCEN                           00000003
+TMR0                              00000001
+TMR0IE                            00000005
+TMR0IF                            00000002
+TMR1                              0000000E
+TMR1CS                            00000001
+TMR1GE                            00000006
+TMR1H                             0000000F
+TMR1IE                            00000000
+TMR1IF                            00000000
+TMR1L                             0000000E
+TMR1ON                            00000000
+TRISIO                            00000085
+TRISIO0                           00000000
+TRISIO1                           00000001
+TRISIO2                           00000002
+TRISIO3                           00000003
+TRISIO4                           00000004
+TRISIO5                           00000005
+VCFG                              00000006
+VR0                               00000000
+VR1                               00000001
+VR2                               00000002
+VR3                               00000003
+VRCON                             00000099
+VREN                              00000007
+VRR                               00000005
+W                                 00000000
+WPU                               00000095
+WPU0                              00000000
+WPU1                              00000001
+WPU2                              00000002
+WPU4                              00000004
+WPU5                              00000005
+MPASM 5.75                          MAIN.ASM   10-25-2017  23:28:48         PAGE  8
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+WR                                00000001
+WREN                              00000002
+WRERR                             00000003
+Z                                 00000002
+_BODEN_OFF                        00003FBF
+_BODEN_ON                         00003FFF
+_BOREN_OFF                        00003FBF
+_BOREN_ON                         00003FFF
+_CONFIG                           00002007
+_CPD_OFF                          00003FFF
+_CPD_ON                           00003EFF
+_CP_OFF                           00003FFF
+_CP_ON                            00003F7F
+_DEVID1                           00002006
+_EC_OSC                           00003FFB
+_EXTRC_OSC_CLKOUT                 00003FFF
+_EXTRC_OSC_NOCLKOUT               00003FFE
+_FOSC_EC                          00003FFB
+_FOSC_EXTRCCLK                    00003FFF
+_FOSC_EXTRCIO                     00003FFE
+_FOSC_HS                          00003FFA
+_FOSC_INTRCCLK                    00003FFD
+_FOSC_INTRCIO                     00003FFC
+_FOSC_LP                          00003FF8
+_FOSC_XT                          00003FF9
+_HS_OSC                           00003FFA
+_IDLOC0                           00002000
+_IDLOC1                           00002001
+_IDLOC2                           00002002
+_IDLOC3                           00002003
+_INTRC_OSC_CLKOUT                 00003FFD
+_INTRC_OSC_NOCLKOUT               00003FFC
+_LP_OSC                           00003FF8
+_MCLRE_OFF                        00003FDF
+_MCLRE_ON                         00003FFF
+_PWRTE_OFF                        00003FFF
+_PWRTE_ON                         00003FEF
+_WDTE_OFF                         00003FF7
+_WDTE_ON                          00003FFF
+_WDT_OFF                          00003FF7
+_WDT_ON                           00003FFF
+_XT_OSC                           00003FF9
+__12F675                          00000001
+fConfiguracion                    00000008
+fLeerDatos                        0000000C
+fMostrarResultado                 0000004E
+lLeerDatoDecrementarContador      0000002B
+lLeerDatosBotonEntradaNoPresiona  0000004B
+lLeerDatosChequearContadorTermin  00000043
+lLeerDatosIngresandoOperando2     00000040
+lLeerDatosReturn                  0000004D
+lLeerDatosWhile                   00000019
+
+MPASM 5.75                          MAIN.ASM   10-25-2017  23:28:48         PAGE  9
+
+
+
+
+
+Errors   :     0
+Warnings :    19 reported,     0 suppressed
+Messages :     0 reported,     1 suppressed
+
+
