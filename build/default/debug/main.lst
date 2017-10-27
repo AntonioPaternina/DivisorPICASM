@@ -1,4 +1,4 @@
-MPASM 5.75                          MAIN.ASM   10-26-2017  12:11:28         PAGE  1
+MPASM 5.75                          MAIN.ASM   10-27-2017  18:05:42         PAGE  1
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
@@ -26,293 +26,317 @@ Warning[205]: Found directive in column 1. (__CONFIG)
                       00006     
                       00007 ; Definicion de Pines del PIC12F675
                       00008 ; 1. Vcc=5Vdc, salida de la fuente AC
-                      00009 ; 2. GP5, 
-                      00010 ; 3. GP4, salida digital GP4salidaPIN3   
-                      00011 ; * GP1 -> salida al LED de resultado.
-                      00012 ; * GP2 -> salida al LED de modo de entrada. LOW=operando 1 HIGH=OPERANDO2
-                      00013 ; * GP0 -> entrada de operando / reset
-                      00014 ; * GP3 -> entrada de control de operando. LOW= ingresar OPERANDO1, HIGH= ingresar OPERANDO2
+                      00009 ; 2. GP5 -> ENTRADA BOTÓN CONTROL DE OPERANDO. LOW=OPERANDO1 (DIVIDENDO), HIGH=OPERANDO2 (DIVISOR)
+                      00010 ; 3. GP4
+                      00011 ; 4. GP3 -> ENRADA BOTÓN DE OPERANDO
+                      00012 ; 5. GP2
+                      00013 ; 6. GP1
+                      00014 ; 7. GP0 -> SALIDA LED DE RESULTADO
                       00015 ; 8. VSS=GND
                       00016     
                       00017 ;***DEFINICION VARIABLES
   00000003            00018 BOTON_ENTRADA           EQU         3           ;bit de GPIO para el botón de entrada de datos
   00000005            00019 BOTON_CONTROL           EQU         5           ;bit de GPIO para el botón de control del operando
   00000000            00020 LED_RESULTADO           EQU         0           ;bit de GPIO para el LED de Resultado
-  00000020            00021 __pcstackBANK0          EQU         0x20                
-  00000021            00022 FLAG_FLANCO             EQU         0x21        ;registro para detectar flanco de subida del pulso del b
+  00000001            00021 LED_OPERANDO            EQU         1           ;bit de GPIO para el LED que indica el operando. LOW=ope
+                            rando1 HIGH=operando2
+  00000020            00022 INICIOSTACK             EQU         0x20                
+  00000021            00023 FLAG_FLANCO             EQU         0x21        ;registro para detectar flanco de subida del pulso del b
                             otón
-  00000022            00023 REGISTRO_CONTADOR_1     EQU         0x22        ;registro para el primer byte (menos significativo) del 
+  00000022            00024 REGISTRO_CONTADOR_1     EQU         0x22        ;registro para el primer byte (menos significativo) del 
                             contador
-  00000023            00024 REGISTRO_CONTADOR_2     EQU         0x23        ;registro para el segundo byte del contador
-  00000024            00025 REGISTRO_CONTADOR_3     EQU         0x24        ;registro para el tercer byte del contador
-  00000025            00026 REGISTRO_CONTADOR_4     EQU         0x25        ;registro para el cuarto byte (más significativo) del co
+  00000023            00025 REGISTRO_CONTADOR_2     EQU         0x23        ;registro para el segundo byte del contador
+  00000024            00026 REGISTRO_CONTADOR_3     EQU         0x24        ;registro para el tercer byte del contador
+  00000025            00027 REGISTRO_CONTADOR_4     EQU         0x25        ;registro para el cuarto byte (más significativo) del co
                             ntador
-  00000026            00027 OPERANDO1               EQU         0x26        ;registro para el OPERANDO1
-  00000027            00028 OPERANDO2               EQU         0x27        ;registro para el OPERANDO2
-  00000028            00029 RESULTADO               EQU         0x28        ;registro para el resultado de la division
-  00000029            00030 TEMP                    EQU         0x29        ;registro para una variable temporal de la operación de 
+  00000026            00028 OPERANDO1               EQU         0x26        ;registro para el OPERANDO1
+  00000027            00029 OPERANDO2               EQU         0x27        ;registro para el OPERANDO2
+  00000028            00030 RESULTADO               EQU         0x28        ;registro para el resultado de la division
+  00000029            00031 TEMP                    EQU         0x29        ;registro para una variable temporal de la operación de 
                             división
-  0000002A            00031 contA                   EQU         0x2A        ; Contadores para retardos por software
-  0000002B            00032 contB                   EQU         0x2B
-Warning[205]: Found directive in column 1. (ORG)
-                      00033 ORG     0x000           ; vector de reset
-0000   3000           00034     movlw   0           ; carga W con 0
-MPASM 5.75                          MAIN.ASM   10-26-2017  12:11:28         PAGE  2
+  0000002A            00032 CONTADOR_DELAY_A        EQU         0x2A        ; Contadores para retardos por software
+  0000002B            00033 CONTADOR_DELAY_B        EQU         0x2B
+                      00034 
+MPASM 5.75                          MAIN.ASM   10-27-2017  18:05:42         PAGE  2
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-0001   008B           00035     movwf   INTCON      ; Asegura que no hay interrupciones aun
-0002   2???           00036     goto    INICIO      ; salte al inicio del programa
 Warning[205]: Found directive in column 1. (ORG)
-                      00037 ORG     0x004               ; vector de interrupcion (INTF)
-                      00038    
-0004                  00039 INICIO
+                      00035 ORG     0x000 ; vector de reset
+0000   3000           00036     movlw   0
+0001   008B           00037     movwf   INTCON ; Asegura que no hay interrupciones aun
+0002   2???           00038     goto    INICIO ; salte al inicio del programa
+Warning[205]: Found directive in column 1. (ORG)
+                      00039 ORG     0x004 ; vector de interrupcion (INTF)
+                      00040 
+Warning[205]: Found directive in column 1. (ORG)
+                      00041 ORG     0x030
+                      00042 ; RUTINA DE INICIO
+0030                  00043 INICIO
 Warning[203]: Found opcode in column 1. (CALL)
-0004   2???           00040 CALL fConfiguracion
-Warning[203]: Found opcode in column 1. (CLRWDT)
-0005   0064           00041 CLRWDT
-Warning[203]: Found opcode in column 1. (CALL)
-0006   2???           00042 CALL fLeerDatos
-Warning[203]: Found opcode in column 1. (GOTO)
-0007   2???           00043 GOTO INICIO
-                      00044     
-0008                  00045 fConfiguracion
-                      00046 ;   TRISIO = 0b111100;
-0008   303C           00047     MOVLW 0x3C
-0009   1683           00048     BSF STATUS,RP0  ; banco 1
-000A   0085           00049     MOVWF TRISIO
-000B   0008           00050     RETURN
-000C                  00051 fLeerDatos
-                      00052     ;    DATO_TEMPORAL = 0;
-000C   1283           00053     BCF STATUS,RP0 ; banco 0
-                      00054     ;    if (BOTON_ENTRADA == 1) {
-000D   1D85           00055     BTFSS GPIO,BOTON_ENTRADA
-000E   2???           00056     GOTO lLeerDatosBotonEntradaNoPresionado
-                      00057     ;        if (FLAG_FLANCO == 0) {
-000F   1821           00058     BTFSC FLAG_FLANCO,0
-0010   2???           00059     GOTO lLeerDatosReturn
-                      00060     ;            long REGISTRO_CONTADOR_1 = 200000 -> 0x 00 03 0D 40;
-0011   3000           00061     MOVLW 0x0
-0012   00A5           00062     MOVWF REGISTRO_CONTADOR_4
-0013   3003           00063     MOVLW 0x3
-0014   00A4           00064     MOVWF REGISTRO_CONTADOR_3
-0015   300D           00065     MOVLW 0xD
-0016   00A3           00066     MOVWF REGISTRO_CONTADOR_2
-0017   3040           00067     MOVLW 0x40
-0018   00A2           00068     MOVWF REGISTRO_CONTADOR_1
-                      00069     ;            while (REGISTRO_CONTADOR_1 > 0) {                
+0030   2???           00044 CALL fConfiguracion
+0031                  00045 LOOPINICIO
+0031   0064           00046     CLRWDT
+0032   2???           00047     CALL fLeerDatos
+0033   2???           00048     GOTO LOOPINICIO
+                      00049 
+                      00050 ; SUBRUTINA DE CONFIGURACION
+0034                  00051 fConfiguracion
+0034   1683           00052     BSF STATUS,RP0  ; banco 1
+0035   303C           00053     MOVLW 0x3C ; equivale a 0b111100, GP0 y GP1 como salida el resto como entrada
+0036   0085           00054     MOVWF TRISIO
+0037   0008           00055     RETURN
+                      00056     
+                      00057 ; SUBRUTINA DE LEER DATOS
+0038                  00058 fLeerDatos
+0038   1283           00059     BCF STATUS,RP0 ; banco 0
+                      00060     
+0039   1E85           00061     BTFSS GPIO,BOTON_CONTROL ; encender/apagar el led de control de operando
+003A   1085           00062     BCF GPIO,LED_OPERANDO
+003B   1485           00063     BSF GPIO,LED_OPERANDO
+                      00064     
+003C   1D85           00065     BTFSS GPIO,BOTON_ENTRADA ; revisar si está presionado el botón de entrada
+003D   2???           00066     GOTO lLeerDatosBotonEntradaNoPresionado ; saltar a esta posición si no está presionado
+003E   1821           00067     BTFSC FLAG_FLANCO,0 ; si el flag está activo entonces se trata del mismo pulso, return
+003F   2???           00068     GOTO lLeerDatosReturn
+                      00069     ; inicializar el contador de espera de 4 bytes con 200000 -> 0x 00 03 0D 40
+0040   3000           00070     MOVLW 0x0
+0041   00A5           00071     MOVWF REGISTRO_CONTADOR_4
+0042   3003           00072     MOVLW 0x3
+0043   00A4           00073     MOVWF REGISTRO_CONTADOR_3
+0044   300D           00074     MOVLW 0xD
+0045   00A3           00075     MOVWF REGISTRO_CONTADOR_2
+0046   3040           00076     MOVLW 0x40
+0047   00A2           00077     MOVWF REGISTRO_CONTADOR_1
 Warning[207]: Found label after column 1. (lLeerDatosWhile)
-0019   1283           00070     lLeerDatosWhile BCF STATUS,RP0          ;banco 0
-001A   1BA5           00071     BTFSC REGISTRO_CONTADOR_4,7
-001B   2???           00072     GOTO lLeerDatosReturn   ; si el contador es negativo
-001C   0825           00073     MOVF REGISTRO_CONTADOR_4,W
-001D   1D03           00074     BTFSS STATUS,0x2    ; esto almacena 1 si el resultado de una operación es 0
-001E   2???           00075     GOTO lLeerDatoDecrementarContador
-001F   0824           00076     MOVF REGISTRO_CONTADOR_3,W
-0020   1D03           00077     BTFSS STATUS,0x2
-0021   2???           00078     GOTO lLeerDatoDecrementarContador
-0022   0823           00079     MOVF REGISTRO_CONTADOR_2, W
-0023   1D03           00080     BTFSS STATUS,0x2
-0024   2???           00081     GOTO lLeerDatoDecrementarContador
-MPASM 5.75                          MAIN.ASM   10-26-2017  12:11:28         PAGE  3
+0048                  00078     lLeerDatosWhile
+0048   1283           00079         BCF STATUS,RP0      ;banco 0
+0049   1BA5           00080         BTFSC REGISTRO_CONTADOR_4,7
+004A   2???           00081         GOTO lLeerDatosReturn   ; si el contador es negativo
+004B   0825           00082         MOVF REGISTRO_CONTADOR_4,W
+MPASM 5.75                          MAIN.ASM   10-27-2017  18:05:42         PAGE  3
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-0025   3001           00082     MOVLW 1
-0026   0222           00083     SUBWF REGISTRO_CONTADOR_1,W ;le resta 1 a el byte menos significativo y guarda el resultado en el mi
-                            smo byte
-0027   1D03           00084     BTFSS STATUS,0x2
-0028   1803           00085     BTFSC STATUS,0x0 ; esto es 0 si no hay carry
-0029   2???           00086     GOTO lLeerDatoDecrementarContador
-002A   2???           00087     GOTO lLeerDatosReturn
-                      00088     ;                REGISTRO_CONTADOR_1--;
+004C   1D03           00083         BTFSS STATUS,0x2        ; esto almacena 1 si el resultado de una operación es 0
+004D   2???           00084         GOTO lLeerDatoDecrementarContador
+004E   0824           00085         MOVF REGISTRO_CONTADOR_3,W
+004F   1D03           00086         BTFSS STATUS,0x2
+0050   2???           00087         GOTO lLeerDatoDecrementarContador
+0051   0823           00088         MOVF REGISTRO_CONTADOR_2, W
+0052   1D03           00089         BTFSS STATUS,0x2
+0053   2???           00090         GOTO lLeerDatoDecrementarContador
+0054   3001           00091         MOVLW 1
+0055   0222           00092         SUBWF REGISTRO_CONTADOR_1,W     ;le resta 1 a el byte menos significativo y guarda el resultado 
+                            en el mismo byte
+0056   1D03           00093         BTFSS STATUS,0x2
+0057   1803           00094         BTFSC STATUS,0x0 ; esto es 0 si no hay carry
+0058   2???           00095         GOTO lLeerDatoDecrementarContador
+0059   2???           00096         GOTO lLeerDatosReturn
+                      00097     ;                REGISTRO_CONTADOR_1--;
 Warning[207]: Found label after column 1. (lLeerDatoDecrementarContador)
-002B   30FF           00089     lLeerDatoDecrementarContador MOVLW 0xFF
-002C   07A2           00090     ADDWF REGISTRO_CONTADOR_1,1
-002D   30FF           00091     MOVLW 0xFF
-002E   1C03           00092     BTFSS STATUS,0
-002F   07A3           00093     ADDWF REGISTRO_CONTADOR_2,1
-0030   30FF           00094     MOVLW 0xFF
-0031   1C03           00095     BTFSS STATUS,0
-0032   07A4           00096     ADDWF REGISTRO_CONTADOR_3,1
-0033   30FF           00097     MOVLW 0xFF
-0034   1C03           00098     BTFSS STATUS,0
-0035   07A5           00099     ADDWF REGISTRO_CONTADOR_4,1
-                      00100     ;                CLRWDT();
-0036   0064           00101     CLRWDT
-                      00102     ;                if (BOTON_ENTRADA == 0) {
-0037   1283           00103     BCF STATUS,RP0
-0038   1985           00104     BTFSC GPIO, 0x3
-0039   2???           00105     GOTO lLeerDatosChequearContadorTerminado
-                      00106     ;                    FLAG_FLANCO = 1;
-003A   1421           00107     BSF FLAG_FLANCO,0
-                      00108     ;                    if (BOTON_CONTROL == 0) { // ingresando OPERANDO1
-003B   1A85           00109     BTFSC GPIO,BOTON_CONTROL
-003C   2???           00110     GOTO lLeerDatosIngresandoOperando2
-                      00111     ;                        OPERANDO1 += DATO_TEMPORAL;
-003D   3001           00112     MOVLW 1
-003E   07A6           00113     ADDWF OPERANDO1,1
-                      00114     ;                    } else { // ingresando OPERANDO2
-003F   2???           00115     GOTO lLeerDatosReturn
-                      00116     ;                        OPERANDO2 += DATO_TEMPORAL;
+005A   30FF           00098     lLeerDatoDecrementarContador MOVLW 0xFF
+005B   07A2           00099         ADDWF REGISTRO_CONTADOR_1,1
+005C   30FF           00100         MOVLW 0xFF
+005D   1C03           00101         BTFSS STATUS,0
+005E   07A3           00102         ADDWF REGISTRO_CONTADOR_2,1
+005F   30FF           00103         MOVLW 0xFF
+0060   1C03           00104         BTFSS STATUS,0
+0061   07A4           00105         ADDWF REGISTRO_CONTADOR_3,1
+0062   30FF           00106         MOVLW 0xFF
+0063   1C03           00107         BTFSS STATUS,0
+0064   07A5           00108         ADDWF REGISTRO_CONTADOR_4,1
+                      00109 
+0065   0064           00110         CLRWDT
+                      00111 
+0066   1283           00112         BCF STATUS,RP0
+0067   1985           00113         BTFSC GPIO, 0x3
+0068   2???           00114         GOTO lLeerDatosChequearContadorTerminado
+                      00115 
+0069   1421           00116         BSF FLAG_FLANCO,0
+                      00117 
+006A   1A85           00118         BTFSC GPIO,BOTON_CONTROL
+006B   2???           00119         GOTO lLeerDatosIngresandoOperando2
+                      00120 
+006C   3001           00121         MOVLW 1
+006D   07A6           00122         ADDWF OPERANDO1,1
+                      00123 
+006E   2???           00124         GOTO lLeerDatosReturn
+                      00125 
 Warning[207]: Found label after column 1. (lLeerDatosIngresandoOperando2)
-0040   3001           00117     lLeerDatosIngresandoOperando2 MOVLW 1
-0041   07A7           00118     ADDWF OPERANDO2,1
-0042   2???           00119     GOTO lLeerDatosReturn
-                      00120     ;                } else if (REGISTRO_CONTADOR_1 == 0) {
+006F   3001           00126     lLeerDatosIngresandoOperando2 MOVLW 1
+0070   07A7           00127         ADDWF OPERANDO2,1
+0071   2???           00128         GOTO lLeerDatosReturn
+                      00129 
 Warning[207]: Found label after column 1. (lLeerDatosChequearContadorTerminado)
 Warning[208]: Label truncated at 32 characters. (lLeerDatosChequearContadorTerminado)
-0043   0825           00121     lLeerDatosChequearContadorTerminado MOVF REGISTRO_CONTADOR_4,W
-0044   0424           00122     IORWF REGISTRO_CONTADOR_3,W
-0045   0423           00123     IORWF REGISTRO_CONTADOR_2,W
-0046   0422           00124     IORWF REGISTRO_CONTADOR_1,W
-0047   1D03           00125     BTFSS STATUS,2
-0048   2???           00126     GOTO lLeerDatosWhile
-                      00127     ;                    mostrarResultado();
-0049   2???           00128     CALL fMostrarResultado
-004A   2???           00129     GOTO lLeerDatosReturn
-MPASM 5.75                          MAIN.ASM   10-26-2017  12:11:28         PAGE  4
+0072   0825           00130     lLeerDatosChequearContadorTerminado MOVF REGISTRO_CONTADOR_4,W
+MPASM 5.75                          MAIN.ASM   10-27-2017  18:05:42         PAGE  4
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-                      00130     ;        FLAG_FLANCO = 0;
+0073   0424           00131         IORWF REGISTRO_CONTADOR_3,W
+0074   0423           00132         IORWF REGISTRO_CONTADOR_2,W
+0075   0422           00133         IORWF REGISTRO_CONTADOR_1,W
+0076   1D03           00134         BTFSS STATUS,2
+0077   2???           00135         GOTO lLeerDatosWhile
+                      00136 
+0078   2???           00137         CALL fMostrarResultado
+0079   2???           00138         GOTO lLeerDatosReturn
+                      00139 
 Warning[207]: Found label after column 1. (lLeerDatosBotonEntradaNoPresionado)
 Warning[208]: Label truncated at 32 characters. (lLeerDatosBotonEntradaNoPresionado)
-004B   01A1           00131     lLeerDatosBotonEntradaNoPresionado CLRF FLAG_FLANCO
-004C   2???           00132     GOTO lLeerDatosReturn
+007A   01A1           00140     lLeerDatosBotonEntradaNoPresionado CLRF FLAG_FLANCO
+007B   2???           00141         GOTO lLeerDatosReturn
 Warning[207]: Found label after column 1. (lLeerDatosReturn)
-004D   0008           00133     lLeerDatosReturn RETURN
-004E                  00134 fMostrarResultado
-004E   2???           00135     CALL fDivisionEntera
-004F   1283           00136     BCF STATUS,RP0 ; banco0
-                      00137     ;    while (resultado > 0) {
-0050   2???           00138     GOTO lMostrarResultadoFinLoop
-                      00139     ;        CLRWDT();
+007C                  00142     lLeerDatosReturn 
+007C   0008           00143         RETURN
+                      00144     
+                      00145 ; SUBRUTINA PARA MOSTRAR RESULTADO DE LA OPERACION    
+007D                  00146 fMostrarResultado
+007D   2???           00147     CALL fDivisionEntera
+007E   1283           00148     BCF STATUS,RP0 ; banco0
+                      00149     ; se verifica si el resultado es cero en cuyo caso se retorna
+007F   3000           00150     MOVLW 0
+0080   02A8           00151     SUBWF RESULTADO,1
+0081   1903           00152     BTFSC STATUS,2
+0082   2???           00153     GOTO lMostrarResultadoReturn
+0083   2???           00154     GOTO lMostrarResultadoFinLoop
+                      00155 
 Warning[207]: Found label after column 1. (lMostrarResultadoClearWDT)
-0051   0064           00140     lMostrarResultadoClearWDT CLRWDT
-                      00141     ;        parpadearLEDResultado();
-0052   2???           00142     CALL fParpadearLEDResultado
-                      00143     ;        resultado--;
-                      00144     ;    }
+0084                  00156     lMostrarResultadoClearWDT 
+0084   0064           00157         CLRWDT
+0085   2???           00158         CALL fParpadearLEDResultado
+                      00159 
 Warning[207]: Found label after column 1. (lMostrarResultadoFinLoop)
-0053   3001           00145     lMostrarResultadoFinLoop MOVLW 1
-0054   02A8           00146     SUBWF RESULTADO,1
-0055   1D03           00147     BTFSS STATUS,2 ; 1 si es 0 el resultado
-0056   2???           00148     GOTO lMostrarResultadoClearWDT
-0057   0008           00149     RETURN
-0058                  00150 fParpadearLEDResultado
-                      00151     ;    apagar LED de resultado
-0058   1283           00152     BCF STATUS,RP0 ; banco 0
-0059   1005           00153     BCF GPIO,LED_RESULTADO
-                      00154     ;    _delay(tiempoParpadeo);
-005A   2???           00155     CALL fDelay50ms
-                      00156     ;    encender LED de resultado
-005B   1283           00157     BCF STATUS,RP0
-005C   1405           00158     BSF GPIO,LED_RESULTADO
-                      00159     ;    _delay(tiempoParpadeo);
-005D   2???           00160     CALL fDelay50ms
-                      00161     ;}
-005E   0008           00162     RETURN
-005F                  00163 fDivisionEntera
-                      00164     ;    unsigned char temp = 1;
-005F   1283           00165     BCF STATUS,RP0
-0060   01A8           00166     CLRF RESULTADO
-0061   01A9           00167     CLRF TEMP
-0062   0AA9           00168     INCF TEMP, F
-                      00169     ;    if (OPERANDO2 == 0) {
-0063   0827           00170     MOVF OPERANDO2,W
-0064   1903           00171     BTFSC STATUS,2 ; zero-bit, 1 si es 0    
-0065   2???           00172     GOTO lDivisionEnteraReturn
-0066   2???           00173     GOTO lDivisionEnteraInicio
-                      00174     ;    //  Se calcula cuantas posiciones enteras tendrá el resultado
-                      00175     ;    while (OPERANDO2 <= OPERANDO1) {
-                      00176     ;        OPERANDO2 <<= 1;
+0086                  00160     lMostrarResultadoFinLoop 
+0086   3001           00161         MOVLW 1
+0087   02A8           00162         SUBWF RESULTADO,1
+0088   1D03           00163         BTFSS STATUS,2
+0089   2???           00164         GOTO lMostrarResultadoClearWDT ; si el resultado no es cero entonces seguir parpadeando
+008A   2???           00165         CALL fParpadearLEDResultado  ; si el resultado es cero entonces parpadear una vez
+008B   01A6           00166         CLRF OPERANDO1 ;limpiar los operandos 
+008C   01A7           00167         CLRF OPERANDO2
+008D   2???           00168         GOTO lMostrarResultadoReturn
+Warning[207]: Found label after column 1. (lMostrarResultadoReturn)
+008E                  00169     lMostrarResultadoReturn
+008E   0008           00170         RETURN
+                      00171     
+                      00172 ; SUBRUTINA PARA PARPADEAR UNA VEZ EL LED DE RESULTADO    
+008F                  00173 fParpadearLEDResultado
+                      00174     ;    apagar LED de resultado
+008F   1283           00175     BCF STATUS,RP0 ; banco 0
+0090   1005           00176     BCF GPIO,LED_RESULTADO
+                      00177     ;    _delay(tiempoParpadeo);
+MPASM 5.75                          MAIN.ASM   10-27-2017  18:05:42         PAGE  5
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0091   2???           00178     CALL fDelay50ms
+                      00179     ;    encender LED de resultado
+0092   1283           00180     BCF STATUS,RP0
+0093   1405           00181     BSF GPIO,LED_RESULTADO
+                      00182     ;    _delay(tiempoParpadeo);
+0094   2???           00183     CALL fDelay50ms
+                      00184     ;}
+0095   0008           00185     RETURN
+                      00186     
+                      00187 ; SUBRUTINA QUE CALCULA LA DIVISION ENTERA    
+0096                  00188 fDivisionEntera
+                      00189 
+0096   1283           00190     BCF STATUS,RP0
+0097   01A8           00191     CLRF RESULTADO
+0098   01A9           00192     CLRF TEMP
+0099   0AA9           00193     INCF TEMP, F
+                      00194 
+009A   0827           00195     MOVF OPERANDO2,W
+009B   1903           00196     BTFSC STATUS,2 ; zero-bit, 1 si es 0    
+009C   2???           00197     GOTO lDivisionEnteraReturn
+009D   2???           00198     GOTO lDivisionEnteraInicio
+                      00199     
+                      00200     
 Warning[207]: Found label after column 1. (lDivisionEnteraWhile)
-MPASM 5.75                          MAIN.ASM   10-26-2017  12:11:28         PAGE  5
-
-
-LOC  OBJECT CODE     LINE SOURCE TEXT
-  VALUE
-
-0067   1003           00177     lDivisionEnteraWhile BCF STATUS,0 ; limpiar carry
-0068   0DA7           00178     RLF OPERANDO2,F ;rotate left f through carry
-                      00179     ;        TEMP <<= 1;
-0069   1003           00180     BCF STATUS,0
-006A   0DA9           00181     RLF TEMP,F
-                      00182     ;    }
+009E   1003           00201     lDivisionEnteraWhile BCF STATUS,0 ; limpiar carry
+009F   0DA7           00202         RLF OPERANDO2,F ;rotate left f through carry
+                      00203         
+00A0   1003           00204         BCF STATUS,0
+00A1   0DA9           00205         RLF TEMP,F
+                      00206         
 Warning[207]: Found label after column 1. (lDivisionEnteraInicio)
-006B   0827           00183     lDivisionEnteraInicio MOVF OPERANDO2,W
-006C   0226           00184     SUBWF OPERANDO1,W
-006D   1803           00185     BTFSC STATUS,0
-006E   2???           00186     GOTO lDivisionEnteraWhile
-                      00187     ;    OPERANDO2 >>= 1;
-006F   1003           00188     BCF STATUS,0 ; clear el carry
-0070   0CA7           00189     RRF OPERANDO2,F ; rotate right f throug carry
-                      00190     ;    TEMP >>= 1;
-0071   1003           00191     BCF STATUS,0 ; limpiar el carry
-0072   0CA9           00192     RRF TEMP,F
-                      00193     ;    while (TEMP ;= 0) {
-0073   2???           00194     GOTO lDivisionEnteraFin
-                      00195     ;        if (OPERANDO1 >= OPERANDO2) {
+00A2   0827           00207     lDivisionEnteraInicio MOVF OPERANDO2,W
+00A3   0226           00208         SUBWF OPERANDO1,W
+00A4   1803           00209         BTFSC STATUS,0
+00A5   2???           00210         GOTO lDivisionEnteraWhile
+                      00211 
+00A6   1003           00212         BCF STATUS,0 ; clear el carry
+00A7   0CA7           00213         RRF OPERANDO2,F ; rotate right f throug carry
+                      00214 
+00A8   1003           00215         BCF STATUS,0 ; limpiar el carry
+00A9   0CA9           00216         RRF TEMP,F
+                      00217 
+00AA   2???           00218         GOTO lDivisionEnteraFin
+                      00219 
 Warning[207]: Found label after column 1. (lDivisionEnteraWhile2)
-0074   0827           00196     lDivisionEnteraWhile2 MOVF OPERANDO2, W
-0075   0226           00197     SUBWF OPERANDO1,W
-0076   1C03           00198     BTFSS STATUS,0
-0077   2???           00199     GOTO lDivisionEnteraB
-                      00200     ;            OPERANDO1 -= OPERANDO2;
-0078   0827           00201     MOVF OPERANDO2, W
-0079   02A6           00202     SUBWF OPERANDO1, F
-                      00203     ;            resultado |= TEMP;
-007A   0829           00204     MOVF TEMP, W
-007B   00A0           00205     MOVWF __pcstackBANK0
-007C   0820           00206     MOVF __pcstackBANK0, W
-007D   04A8           00207     IORWF RESULTADO, F
-                      00208     ;        }
-                      00209     ;        TEMP >>= 1;
-Warning[207]: Found label after column 1. (lDivisionEnteraB)
-007E   1003           00210     lDivisionEnteraB BCF STATUS, 0x0
-007F   0CA9           00211     RRF TEMP, F
-                      00212     ;        OPERANDO2 >>= 1;
-0080   1003           00213     BCF STATUS, 0x0
-0081   0CA7           00214     RRF OPERANDO2, F
-                      00215     ;    }
-Warning[207]: Found label after column 1. (lDivisionEnteraFin)
-0082   0829           00216     lDivisionEnteraFin MOVF TEMP, W
-0083   1D03           00217     BTFSS STATUS, 0x2
-0084   2???           00218     GOTO lDivisionEnteraWhile2
-Warning[207]: Found label after column 1. (lDivisionEnteraReturn)
-0085   0008           00219     lDivisionEnteraReturn RETURN
-                      00220 ;--------------------
-0086                  00221 fDelay50ms
-0086   3041           00222     movlw       d'65'
-0087   00AB           00223     movwf       contB
-0088   30EE           00224     movlw       d'238'
-MPASM 5.75                          MAIN.ASM   10-26-2017  12:11:28         PAGE  6
+00AB   0827           00220     lDivisionEnteraWhile2 MOVF OPERANDO2, W
+00AC   0226           00221         SUBWF OPERANDO1,W
+00AD   1C03           00222         BTFSS STATUS,0
+00AE   2???           00223         GOTO lDivisionEnteraB
+                      00224 
+00AF   0827           00225         MOVF OPERANDO2, W
+00B0   02A6           00226         SUBWF OPERANDO1, F
+                      00227 
+MPASM 5.75                          MAIN.ASM   10-27-2017  18:05:42         PAGE  6
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-0089   00AA           00225     movwf       contA
+00B1   0829           00228         MOVF TEMP, W
+00B2   00A0           00229         MOVWF INICIOSTACK
+00B3   0820           00230         MOVF INICIOSTACK, W
+00B4   04A8           00231         IORWF RESULTADO, F
+                      00232 
+Warning[207]: Found label after column 1. (lDivisionEnteraB)
+00B5   1003           00233     lDivisionEnteraB BCF STATUS, 0x0
+00B6   0CA9           00234         RRF TEMP, F
+                      00235 
+00B7   1003           00236         BCF STATUS, 0x0
+00B8   0CA7           00237         RRF OPERANDO2, F
+                      00238 
+Warning[207]: Found label after column 1. (lDivisionEnteraFin)
+00B9   0829           00239     lDivisionEnteraFin MOVF TEMP, W
+00BA   1D03           00240         BTFSS STATUS, 0x2
+00BB   2???           00241         GOTO lDivisionEnteraWhile2
+Warning[207]: Found label after column 1. (lDivisionEnteraReturn)
+00BC                  00242     lDivisionEnteraReturn 
+00BC   0008           00243         RETURN
+                      00244 
+                      00245 ; SUBRUTINA PARA RETARDO DE 50 MILISEGUNDOS
+00BD                  00246 fDelay50ms
+00BD   3041           00247     movlw       d'65'
+00BE   00AB           00248     movwf       CONTADOR_DELAY_B
+00BF   30EE           00249     movlw       d'238'
+00C0   00AA           00250     movwf       CONTADOR_DELAY_A
 Warning[207]: Found label after column 1. (lLoop50ms)
-008A   0064           00226     lLoop50ms   clrwdt ; Borra WDT
-008B   0BAA           00227     decfsz      contA,1
-008C   2???           00228     goto        lLoop50ms
-008D   0BAB           00229     decfsz      contB,1
-008E   2???           00230     goto        lLoop50ms
-008F   0000           00231     nop
-0090   3400           00232     retlw       0
-                      00233 ; --------------------
-                      00234 
+00C1   0064           00251     lLoop50ms   clrwdt ; Borra WDT
+00C2   0BAA           00252         decfsz  CONTADOR_DELAY_A,1
+00C3   2???           00253         goto    lLoop50ms
+00C4   0BAB           00254         decfsz  CONTADOR_DELAY_B,1
+00C5   2???           00255         goto    lLoop50ms
+00C6   0000           00256         nop
+00C7   3400           00257         retlw   0
+                      00258 
 Warning[205]: Found directive in column 1. (END)
-3F44                  00235 END
-MPASM 5.75                          MAIN.ASM   10-26-2017  12:11:28         PAGE  7
+3F44                  00259 END
+MPASM 5.75                          MAIN.ASM   10-27-2017  18:05:42         PAGE  7
 
 
 SYMBOL TABLE
@@ -352,6 +376,8 @@ CM2                               00000002
 CMCON                             00000019
 CMIE                              00000003
 CMIF                              00000003
+CONTADOR_DELAY_A                  0000002A
+CONTADOR_DELAY_B                  0000002B
 COUT                              00000006
 DC                                00000001
 EEADR                             0000009B
@@ -369,14 +395,14 @@ GO                                00000001
 GO_DONE                           00000001
 GO_NOT_DONE                       00000001
 GP0                               00000000
-GP1                               00000001
-GP2                               00000002
-MPASM 5.75                          MAIN.ASM   10-26-2017  12:11:28         PAGE  8
+MPASM 5.75                          MAIN.ASM   10-27-2017  18:05:42         PAGE  8
 
 
 SYMBOL TABLE
   LABEL                             VALUE 
 
+GP1                               00000001
+GP2                               00000002
 GP3                               00000003
 GP4                               00000004
 GP5                               00000005
@@ -390,7 +416,8 @@ GPIO3                             00000003
 GPIO4                             00000004
 GPIO5                             00000005
 INDF                              00000000
-INICIO                            00000004
+INICIO                            00000030
+INICIOSTACK                       00000020
 INTCON                            0000000B
 INTE                              00000004
 INTEDG                            00000006
@@ -410,7 +437,9 @@ IOCB3                             00000003
 IOCB4                             00000004
 IOCB5                             00000005
 IRP                               00000007
+LED_OPERANDO                      00000001
 LED_RESULTADO                     00000000
+LOOPINICIO                        00000031
 NOT_BOD                           00000000
 NOT_BOR                           00000000
 NOT_DONE                          00000001
@@ -425,17 +454,17 @@ OPTION_REG                        00000081
 OSCCAL                            00000090
 PCL                               00000002
 PCLATH                            0000000A
-PCON                              0000008E
-PEIE                              00000006
-PIE1                              0000008C
-PIR1                              0000000C
-PS0                               00000000
-MPASM 5.75                          MAIN.ASM   10-26-2017  12:11:28         PAGE  9
+MPASM 5.75                          MAIN.ASM   10-27-2017  18:05:42         PAGE  9
 
 
 SYMBOL TABLE
   LABEL                             VALUE 
 
+PCON                              0000008E
+PEIE                              00000006
+PIE1                              0000008C
+PIR1                              0000000C
+PS0                               00000000
 PS1                               00000001
 PS2                               00000002
 PSA                               00000003
@@ -484,17 +513,17 @@ VR2                               00000002
 VR3                               00000003
 VRCON                             00000099
 VREN                              00000007
-VRR                               00000005
-W                                 00000000
-WPU                               00000095
-WPU0                              00000000
-WPU1                              00000001
-MPASM 5.75                          MAIN.ASM   10-26-2017  12:11:28         PAGE 10
+MPASM 5.75                          MAIN.ASM   10-27-2017  18:05:42         PAGE 10
 
 
 SYMBOL TABLE
   LABEL                             VALUE 
 
+VRR                               00000005
+W                                 00000000
+WPU                               00000095
+WPU0                              00000000
+WPU1                              00000001
 WPU2                              00000002
 WPU4                              00000004
 WPU5                              00000005
@@ -543,39 +572,37 @@ _XT_OSC                           00003FF9
 __12F675                          00000001
 __DEBUG                           
 __MPLAB_DEBUGGER_SIMULATOR        1
-__pcstackBANK0                    00000020
-contA                             0000002A
-contB                             0000002B
-fConfiguracion                    00000008
-fDelay50ms                        00000086
-MPASM 5.75                          MAIN.ASM   10-26-2017  12:11:28         PAGE 11
+MPASM 5.75                          MAIN.ASM   10-27-2017  18:05:42         PAGE 11
 
 
 SYMBOL TABLE
   LABEL                             VALUE 
 
-fDivisionEntera                   0000005F
-fLeerDatos                        0000000C
-fMostrarResultado                 0000004E
-fParpadearLEDResultado            00000058
-lDivisionEnteraB                  0000007E
-lDivisionEnteraFin                00000082
-lDivisionEnteraInicio             0000006B
-lDivisionEnteraReturn             00000085
-lDivisionEnteraWhile              00000067
-lDivisionEnteraWhile2             00000074
-lLeerDatoDecrementarContador      0000002B
-lLeerDatosBotonEntradaNoPresiona  0000004B
-lLeerDatosChequearContadorTermin  00000043
-lLeerDatosIngresandoOperando2     00000040
-lLeerDatosReturn                  0000004D
-lLeerDatosWhile                   00000019
-lLoop50ms                         0000008A
-lMostrarResultadoClearWDT         00000051
-lMostrarResultadoFinLoop          00000053
+fConfiguracion                    00000034
+fDelay50ms                        000000BD
+fDivisionEntera                   00000096
+fLeerDatos                        00000038
+fMostrarResultado                 0000007D
+fParpadearLEDResultado            0000008F
+lDivisionEnteraB                  000000B5
+lDivisionEnteraFin                000000B9
+lDivisionEnteraInicio             000000A2
+lDivisionEnteraReturn             000000BC
+lDivisionEnteraWhile              0000009E
+lDivisionEnteraWhile2             000000AB
+lLeerDatoDecrementarContador      0000005A
+lLeerDatosBotonEntradaNoPresiona  0000007A
+lLeerDatosChequearContadorTermin  00000072
+lLeerDatosIngresandoOperando2     0000006F
+lLeerDatosReturn                  0000007C
+lLeerDatosWhile                   00000048
+lLoop50ms                         000000C1
+lMostrarResultadoClearWDT         00000084
+lMostrarResultadoFinLoop          00000086
+lMostrarResultadoReturn           0000008E
 
 Errors   :     0
-Warnings :    28 reported,     0 suppressed
+Warnings :    27 reported,     0 suppressed
 Messages :     0 reported,     1 suppressed
 
 
